@@ -84,9 +84,9 @@ stages:
               - task: AzureRmWebAppDeployment@4
                 inputs:
                   ConnectionType: 'AzureRM'
-                  azureSubscription: ''
+                  azureSubscription: '$(AzureSub)'
                   appType: 'webApp'
-                  WebAppName: ''
+                  WebAppName: '$(WebAppName)'
                   packageForLinux: '$(System.ArtifactsDirectory)/**/*.zip'
 
 - stage: QA
@@ -120,9 +120,9 @@ stages:
               - task: AzureRmWebAppDeployment@4
                 inputs:
                   ConnectionType: 'AzureRM'
-                  azureSubscription: ''
+                  azureSubscription: '$(AzureSub)'
                   appType: 'webApp'
-                  WebAppName: ''
+                  WebAppName: '$(WebAppName)'
                   packageForLinux: '$(System.ArtifactsDirectory)/**/*.zip'
 
 - stage: Prod
@@ -131,7 +131,7 @@ stages:
       pool:
         vmImage: 'ubuntu-latest'
       variables:
-        WebAppName: 'DNCWebAppDev'
+        WebAppName: 'DNCWebAppProd'
       environment: Dev
       strategy:
         runOnce:
@@ -156,43 +156,7 @@ stages:
               - task: AzureRmWebAppDeployment@4
                 inputs:
                   ConnectionType: 'AzureRM'
-                  azureSubscription: ''
-                  appType: 'webApp'
-                  WebAppName: ''
-                  packageForLinux: '$(System.ArtifactsDirectory)/**/*.zip'
-
-- stage: Prod
-  jobs:
-    - deployment: DeployWebsite
-      pool:
-        vmImage: 'ubuntu-latest'
-      variables:
-        WebAppName: 'DNCWebAppDev'
-      environment: Dev
-      strategy:
-        runOnce:
-          deploy:
-            steps:
-              - task: DownloadPipelineArtifact@1
-                inputs:
-                  buildType: 'current'
-                  artifactName: 'drop'
-                  targetPath: '$(System.ArtifactsDirectory)/drop'
-              - task: AzureResourceGroupDeployment@2
-                inputs:
                   azureSubscription: '$(AzureSub)'
-                  action: 'Create Or Update Resource Group'
-                  resourceGroupName: '$(AppResourceGroup)'
-                  location: 'UK South'
-                  templateLocation: 'Linked artifact'
-                  csmFile: '$(System.ArtifactsDirectory)/drop/ARM/AppService.json'
-                  csmParametersFile: '$(System.ArtifactsDirectory)/drop/ARM/AppService.parameters.json'
-                  overrideParameters: '-hostingPlanName "dnchostingplan" -webSiteName $(WebAppName) -skuName "F1" -skuCapacity 1'
-                  deploymentMode: 'Incremental'
-              - task: AzureRmWebAppDeployment@4
-                inputs:
-                  ConnectionType: 'AzureRM'
-                  azureSubscription: ''
                   appType: 'webApp'
-                  WebAppName: ''
+                  WebAppName: '$(WebAppName)'
                   packageForLinux: '$(System.ArtifactsDirectory)/**/*.zip'
