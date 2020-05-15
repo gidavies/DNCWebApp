@@ -1,0 +1,9 @@
+.vscode/launch.json
+.vscode/tasks.json
+obj/Debug/netcoreapp3.1/project.razor.json
+obj/Debug/netcoreapp3.1/DNCWebApp.RazorAssemblyInfo.cs
+obj/Debug/netcoreapp3.1/DNCWebApp.RazorAssemblyInfo.cache
+obj/Debug/netcoreapp3.1/DNCWebApp.csprojAssemblyReference.cache
+obj/Debug/netcoreapp3.1/DNCWebApp.assets.cache
+obj/Debug/netcoreapp3.1/DNCWebApp.AssemblyInfoInputs.cache
+obj/Debug/netcoreapp3.1/DNCWebApp.AssemblyInfo.cs
