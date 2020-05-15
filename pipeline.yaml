@@ -1,0 +1,198 @@
+# Simple example for an ASP.NET Core web app build
+# Build and test ASP.NET Core projects targeting .NET Core.
+# Add steps that run tests, create a NuGet package, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
+
+trigger:
+- master
+
+variables:
+  buildConfiguration: 'Release'
+  AppResourceGroup: 'DNCWebAppRG'
+  AzureSub: 'Azure On Line Services(2482da3d-7516-4b32-9057-d311caa99664)'
+  skipComponentGovernanceDetection: 'true' # Disable internal to Microsoft injected policy
+
+stages:
+- stage: Build
+  jobs:
+  - job: 'BuildAndPublish'
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: DotNetCoreCLI@2
+      displayName: Restore
+      inputs:
+        command: restore
+        projects: '**/*.csproj'
+    - task: DotNetCoreCLI@2
+      displayName: Build
+      inputs:
+        projects: '**/*.csproj'
+        arguments: '--configuration $(BuildConfiguration)'
+    # - task: DotNetCoreCLI@2
+    #   displayName: Test
+    #   inputs:
+    #     command: test
+    #     projects: '**/*[Tt]ests/*.csproj'
+    #     arguments: '--configuration $(BuildConfiguration)'
+    - task: CopyFiles@2
+      displayName: 'Copy Files to: $(Pipeline.Workspace)'
+      inputs:
+        SourceFolder: '$(Build.SourcesDirectory)'
+        Contents: 'ARM/**'
+        TargetFolder: '$(Pipeline.Workspace)'    
+    - task: DotNetCoreCLI@2
+      displayName: Publish
+      inputs:
+        command: publish
+        publishWebProjects: True
+        arguments: '--configuration $(BuildConfiguration) --output $(Pipeline.Workspace)'
+        zipAfterPublish: True
+    - task: PublishPipelineArtifact@1
+      inputs:
+        targetPath: '$(Pipeline.Workspace)'
+        artifact: 'drop'
+
+- stage: Dev
+  jobs:
+    - deployment: DeployWebsite
+      pool:
+        vmImage: 'ubuntu-latest'
+      variables:
+        WebAppName: 'DNCWebAppDev'
+      environment: Dev
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+              - task: DownloadPipelineArtifact@1
+                inputs:
+                  buildType: 'current'
+                  artifactName: 'drop'
+                  targetPath: '$(System.ArtifactsDirectory)/drop'
+              - task: AzureResourceGroupDeployment@2
+                inputs:
+                  azureSubscription: '$(AzureSub)'
+                  action: 'Create Or Update Resource Group'
+                  resourceGroupName: '$(AppResourceGroup)'
+                  location: 'UK South'
+                  templateLocation: 'Linked artifact'
+                  csmFile: '$(System.ArtifactsDirectory)/drop/ARM/AppService.json'
+                  csmParametersFile: '$(System.ArtifactsDirectory)/drop/ARM/AppService.parameters.json'
+                  overrideParameters: '-hostingPlanName "dnchostingplan" -webSiteName $(WebAppName) -skuName "F1" -skuCapacity 1'
+                  deploymentMode: 'Incremental'
+              - task: AzureRmWebAppDeployment@4
+                inputs:
+                  ConnectionType: 'AzureRM'
+                  azureSubscription: ''
+                  appType: 'webApp'
+                  WebAppName: ''
+                  packageForLinux: '$(System.ArtifactsDirectory)/**/*.zip'
+
+- stage: QA
+  jobs:
+    - deployment: DeployWebsite
+      pool:
+        vmImage: 'ubuntu-latest'
+      variables:
+        WebAppName: 'DNCWebAppQA'
+      environment: Dev
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+              - task: DownloadPipelineArtifact@1
+                inputs:
+                  buildType: 'current'
+                  artifactName: 'drop'
+                  targetPath: '$(System.ArtifactsDirectory)/drop'
+              - task: AzureResourceGroupDeployment@2
+                inputs:
+                  azureSubscription: '$(AzureSub)'
+                  action: 'Create Or Update Resource Group'
+                  resourceGroupName: '$(AppResourceGroup)'
+                  location: 'UK South'
+                  templateLocation: 'Linked artifact'
+                  csmFile: '$(System.ArtifactsDirectory)/drop/ARM/AppService.json'
+                  csmParametersFile: '$(System.ArtifactsDirectory)/drop/ARM/AppService.parameters.json'
+                  overrideParameters: '-hostingPlanName "dnchostingplan" -webSiteName $(WebAppName) -skuName "F1" -skuCapacity 1'
+                  deploymentMode: 'Incremental'
+              - task: AzureRmWebAppDeployment@4
+                inputs:
+                  ConnectionType: 'AzureRM'
+                  azureSubscription: ''
+                  appType: 'webApp'
+                  WebAppName: ''
+                  packageForLinux: '$(System.ArtifactsDirectory)/**/*.zip'
+
+- stage: Dev
+  jobs:
+    - deployment: DeployWebsite
+      pool:
+        vmImage: 'ubuntu-latest'
+      variables:
+        WebAppName: 'DNCWebAppDev'
+      environment: Dev
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+              - task: DownloadPipelineArtifact@1
+                inputs:
+                  buildType: 'current'
+                  artifactName: 'drop'
+                  targetPath: '$(System.ArtifactsDirectory)/drop'
+              - task: AzureResourceGroupDeployment@2
+                inputs:
+                  azureSubscription: '$(AzureSub)'
+                  action: 'Create Or Update Resource Group'
+                  resourceGroupName: '$(AppResourceGroup)'
+                  location: 'UK South'
+                  templateLocation: 'Linked artifact'
+                  csmFile: '$(System.ArtifactsDirectory)/drop/ARM/AppService.json'
+                  csmParametersFile: '$(System.ArtifactsDirectory)/drop/ARM/AppService.parameters.json'
+                  overrideParameters: '-hostingPlanName "dnchostingplan" -webSiteName $(WebAppName) -skuName "F1" -skuCapacity 1'
+                  deploymentMode: 'Incremental'
+              - task: AzureRmWebAppDeployment@4
+                inputs:
+                  ConnectionType: 'AzureRM'
+                  azureSubscription: ''
+                  appType: 'webApp'
+                  WebAppName: ''
+                  packageForLinux: '$(System.ArtifactsDirectory)/**/*.zip'
+
+- stage: Prod
+  jobs:
+    - deployment: DeployWebsite
+      pool:
+        vmImage: 'ubuntu-latest'
+      variables:
+        WebAppName: 'DNCWebAppDev'
+      environment: Dev
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+              - task: DownloadPipelineArtifact@1
+                inputs:
+                  buildType: 'current'
+                  artifactName: 'drop'
+                  targetPath: '$(System.ArtifactsDirectory)/drop'
+              - task: AzureResourceGroupDeployment@2
+                inputs:
+                  azureSubscription: '$(AzureSub)'
+                  action: 'Create Or Update Resource Group'
+                  resourceGroupName: '$(AppResourceGroup)'
+                  location: 'UK South'
+                  templateLocation: 'Linked artifact'
+                  csmFile: '$(System.ArtifactsDirectory)/drop/ARM/AppService.json'
+                  csmParametersFile: '$(System.ArtifactsDirectory)/drop/ARM/AppService.parameters.json'
+                  overrideParameters: '-hostingPlanName "dnchostingplan" -webSiteName $(WebAppName) -skuName "F1" -skuCapacity 1'
+                  deploymentMode: 'Incremental'
+              - task: AzureRmWebAppDeployment@4
+                inputs:
+                  ConnectionType: 'AzureRM'
+                  azureSubscription: ''
+                  appType: 'webApp'
+                  WebAppName: ''
+                  packageForLinux: '$(System.ArtifactsDirectory)/**/*.zip'
