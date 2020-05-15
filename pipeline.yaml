@@ -125,7 +125,7 @@ stages:
                   WebAppName: ''
                   packageForLinux: '$(System.ArtifactsDirectory)/**/*.zip'
 
-- stage: Dev
+- stage: Prod
   jobs:
     - deployment: DeployWebsite
       pool:
